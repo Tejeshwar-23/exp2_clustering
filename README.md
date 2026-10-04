@@ -21,19 +21,19 @@ pip install -r requirements.txt
 python 02_hierarchical_clustering.py
 
 # 4. Start Python backend server on Port 8002
-python server.py
+python local_server.py
 ```
 Open **[http://localhost:8002](http://localhost:8002)** in your browser.
 
 ---
 
-## 🌐 Deploy to Vercel (Static / Serverless)
+## 🌐 Deploy to Vercel (Serverless / Static)
 
-This project includes a pre-configured `vercel.json` and is ready for 1-click deployment on Vercel or any static hosting platform.
+This project includes a pre-configured `vercel.json` and `pyproject.toml` ready for 1-click deployment on Vercel.
 
 1. Push this folder to a GitHub repository.
-2. In [Vercel](https://vercel.com), import the repository and deploy with default settings (Framework preset: `Other`, Root Directory: `./`).
-3. In static deployment mode, the client-side JavaScript engine automatically drives interactive parameter adjustments, cut threshold calculations, persona cards, and the 5-question Viva Voce assessment!
+2. In [Vercel](https://vercel.com), import the repository and deploy with default settings.
+3. The serverless Python backend runs live Scipy & Scikit-Learn computations, while the client-side JavaScript engine provides seamless fallbacks, interactive parameter adjustments, cut threshold calculations, persona cards, and the 5-question Viva Voce assessment!
 
 ---
 
@@ -45,14 +45,7 @@ This project includes a pre-configured `vercel.json` and is ready for 1-click de
 - **Customer Persona Cards:** Real-time breakdown showing customer counts, percentage share, mean annual income, mean spending score, and business strategy recommendations.
 - **Dynamic KaTeX Formulation Card:** Real-time mathematical equation updates based on the selected linkage criterion.
 
-### 2. 📊 Visual Results & High-Res Gallery
-- Pre-rendered 300-DPI visual assets with full-screen zoom lightbox:
-  - `outputs/clustering/clustering_combined.png` — Combined dual-panel visualization.
-  - `outputs/clustering/dendrogram.png` — Hierarchical tree with cut threshold.
-  - `outputs/clustering/customer_clusters.png` — 2D customer clusters with centroids ($\times$).
-- Technical dataset specification table with analytical justifications.
-
-### 3. 💻 Code Walkthrough
+### 2. 💻 Code Walkthrough
 - Syntax-highlighted, step-by-step annotated Python implementation:
   1. Synthetic customer dataset generation
   2. `StandardScaler` feature normalization
@@ -60,7 +53,7 @@ This project includes a pre-configured `vercel.json` and is ready for 1-click de
   4. Matplotlib dendrogram tree slicing
   5. Scikit-Learn `AgglomerativeClustering` label extraction & persona profiling
 
-### 4. 📝 Viva Voce MCQ Assessment
+### 3. 📝 Viva Voce MCQ Assessment
 - 5 comprehensive multiple-choice questions testing core clustering fundamentals:
   - Agglomerative bottom-up merge process
   - Ward linkage variance minimization objective

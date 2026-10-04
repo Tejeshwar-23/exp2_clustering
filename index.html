@@ -42,13 +42,10 @@
         </div>
       </div>
 
-      <!-- 4 Core Navigation Tabs -->
+      <!-- 3 Core Navigation Tabs -->
       <nav class="nav-tabs" role="tablist">
         <button class="nav-tab-btn active" data-tab="laboratory" id="tab-laboratory" role="tab" aria-selected="true">
           <span>🎛️</span> Interactive Lab
-        </button>
-        <button class="nav-tab-btn" data-tab="gallery" id="tab-gallery" role="tab" aria-selected="false">
-          <span>📊</span> Visual Results
         </button>
         <button class="nav-tab-btn" data-tab="code" id="tab-code" role="tab" aria-selected="false">
           <span>💻</span> Code Walkthrough
@@ -176,121 +173,7 @@
     </section>
 
     <!-- ─────────────────────────────────────────────────────────────
-         TAB 2: VISUAL RESULTS & HIGH-RES GALLERY
-         ───────────────────────────────────────────────────────────── -->
-    <section class="tab-content-panel" id="panel-gallery" role="tabpanel">
-      <div class="panel-header">
-        <div>
-          <h1 class="panel-title">Visual Results &amp; High-Resolution Gallery</h1>
-          <p class="panel-description">
-            Publication-quality 300-DPI visual assets generated from the Python machine learning pipeline. Click any plot to open the full-screen zoom inspector.
-          </p>
-        </div>
-      </div>
-
-      <div class="gallery-grid">
-        <!-- Plot 1: Combined Dual-Panel -->
-        <div class="gallery-item-card">
-          <div class="gallery-preview" onclick="openLightbox('outputs/clustering/clustering_combined.png')">
-            <img src="outputs/clustering/clustering_combined.png" alt="End-to-end Combined Clustering Visualization">
-            <div class="zoom-overlay-hint">🔍 Click to Zoom</div>
-          </div>
-          <div class="gallery-meta">
-            <h2 class="gallery-title">A+B. Complete Dual-Panel Pipeline</h2>
-            <p class="gallery-desc">
-              Synchronized view illustrating the direct relationship between the hierarchical tree cut threshold (horizontal dashed line) and the 2D customer clusters in feature space.
-            </p>
-            <div class="gallery-pills">
-              <span class="spec-pill">File: clustering_combined.png</span>
-              <span class="spec-pill">DPI: 300</span>
-              <span class="spec-pill">Layout: 1x2 Subplots</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Plot 2: Dendrogram Tree -->
-        <div class="gallery-item-card">
-          <div class="gallery-preview" onclick="openLightbox('outputs/clustering/dendrogram.png')">
-            <img src="outputs/clustering/dendrogram.png" alt="Hierarchical Dendrogram Tree">
-            <div class="zoom-overlay-hint">🔍 Click to Zoom</div>
-          </div>
-          <div class="gallery-meta">
-            <h2 class="gallery-title">A. Hierarchical Dendrogram Tree</h2>
-            <p class="gallery-desc">
-              Complete tree hierarchy depicting successive agglomeration steps. Vertical heights correspond to Euclidean Ward merge distances. Red dashed line cuts the tree into 5 segments.
-            </p>
-            <div class="gallery-pills">
-              <span class="spec-pill">File: dendrogram.png</span>
-              <span class="spec-pill">Metric: Euclidean</span>
-              <span class="spec-pill">Linkage: Ward</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Plot 3: 2D Customer Feature Space -->
-        <div class="gallery-item-card">
-          <div class="gallery-preview" onclick="openLightbox('outputs/clustering/customer_clusters.png')">
-            <img src="outputs/clustering/customer_clusters.png" alt="Customer Clusters 2D Scatter Space">
-            <div class="zoom-overlay-hint">🔍 Click to Zoom</div>
-          </div>
-          <div class="gallery-meta">
-            <h2 class="gallery-title">B. 2D Customer Persona Clusters</h2>
-            <p class="gallery-desc">
-              Customer distribution mapped across Annual Income ($k) vs Spending Score (1–100). Includes marked cluster centroids (\(\times\)) and clear quadrant-based segmentation.
-            </p>
-            <div class="gallery-pills">
-              <span class="spec-pill">File: customer_clusters.png</span>
-              <span class="spec-pill">Centroids: Marked (X)</span>
-              <span class="spec-pill">Classes: 5 Personas</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dataset & Academic Metadata Table -->
-      <div class="metadata-table-box">
-        <h3>Dataset &amp; Clustering Technical Specifications</h3>
-        <table class="academic-table">
-          <thead>
-            <tr>
-              <th>Parameter / Metric</th>
-              <th>Specification</th>
-              <th>Analytical Rationale</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Dataset Domain</td>
-              <td>Mall Customer Segmentation</td>
-              <td>Simulates real-world retail purchasing behavior across income brackets and spend habits.</td>
-            </tr>
-            <tr>
-              <td>Feature Space (\(p=2\))</td>
-              <td>Annual Income (\(\$k\)), Spending Score (\(1\text{–}100\))</td>
-              <td>Orthogonal features representing economic capacity vs consumer propensity to spend.</td>
-            </tr>
-            <tr>
-              <td>Preprocessing Transformation</td>
-              <td>StandardScaler (\(\mu=0, \sigma=1\))</td>
-              <td>Prevents scale dominance in Euclidean distance matrix calculation.</td>
-            </tr>
-            <tr>
-              <td>Primary Linkage Algorithm</td>
-              <td>Ward's Minimum Variance (\(\min \Delta \text{ESS}\))</td>
-              <td>Produces compact, spherical, equal-variance customer groups ideal for marketing campaigns.</td>
-            </tr>
-            <tr>
-              <td>Tree Slicing Criterion</td>
-              <td>Largest vertical leap in Dendrogram</td>
-              <td>Identifies stable cluster separation before dissimilar macro-groups are forced together.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ─────────────────────────────────────────────────────────────
-         TAB 3: CODE WALKTHROUGH
+         TAB 2: CODE WALKTHROUGH
          ───────────────────────────────────────────────────────────── -->
     <section class="tab-content-panel" id="panel-code" role="tabpanel">
       <div class="panel-header">
@@ -443,7 +326,7 @@
     </section>
 
     <!-- ─────────────────────────────────────────────────────────────
-         TAB 4: VIVA VOCE MCQ ASSESSMENT
+         TAB 3: VIVA VOCE MCQ ASSESSMENT
          ───────────────────────────────────────────────────────────── -->
     <section class="tab-content-panel" id="panel-viva" role="tabpanel">
       <div class="panel-header">
