@@ -336,7 +336,8 @@ function renderClientSideClustering(k, linkageMethod, seed, theme) {
   const cutHeightEl = document.getElementById('val-cut-height');
   const tagEl = document.getElementById('live-exec-tag');
 
-  if (plotImg) plotImg.style.display = 'block';
+  if (plotImg) plotImg.style.display = 'none';
+  if (canvas) canvas.style.display = 'block';
   if (tagEl) tagEl.textContent = `Static Client Engine • ${linkageMethod.toUpperCase()} • k=${k}`;
 
   // Approximate realistic cut threshold based on k
@@ -356,6 +357,244 @@ function renderClientSideClustering(k, linkageMethod, seed, theme) {
   }));
 
   renderPersonaCards(activePersonas, k);
+  drawFallbackCanvas(canvas, k, linkageMethod, seed, theme, approxCut, activePersonas);
+}
+
+function drawFallbackCanvas(canvas, k, linkageMethod, seed, theme, approxCut, personas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const width = rect.width > 200 ? rect.width : 920;
+  const height = 350;
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const isDark = (theme === 'dark');
+  const bgColor = isDark ? '#0B1120' : '#FFFFFF';
+  const cardBg = isDark ? '#0F172A' : '#F8FAFC';
+  const textColor = isDark ? '#F8FAFC' : '#0F172A';
+  const mutedColor = isDark ? '#94A3B8' : '#64748B';
+  const gridColor = isDark ? '#334155' : '#E2E8F0';
+  const spineColor = isDark ? '#334155' : '#CBD5E1';
+  const cutColor = isDark ? '#F43F5E' : '#DC2626';
+
+  const palette = isDark
+    ? ['#38BDF8', '#34D399', '#FB923C', '#A78BFA', '#F43F5E', '#FBBF24', '#2DD4BF', '#E879F9']
+    : ['#0284C7', '#059669', '#D97706', '#7C3AED', '#DC2626', '#B45309', '#0D9488', '#4F46E5'];
+
+  // Clear Background
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  const margin = 10;
+  const panelW = (width - margin * 3) / 2;
+  const panelH = height - margin * 2;
+
+  // ── LEFT PANEL: Dendrogram Tree ──
+  const p1X = margin;
+  const p1Y = margin;
+  ctx.fillStyle = cardBg;
+  ctx.fillRect(p1X, p1Y, panelW, panelH);
+  ctx.strokeStyle = spineColor;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(p1X, p1Y, panelW, panelH);
+
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 12px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(`A. Hierarchical Dendrogram (${linkageMethod.charAt(0).toUpperCase() + linkageMethod.slice(1)} Linkage)`, p1X + 16, p1Y + 22);
+
+  ctx.fillStyle = mutedColor;
+  ctx.font = 'bold 9.5px "JetBrains Mono", monospace';
+  ctx.fillText('Euclidean Distance', p1X + 16, p1Y + 40);
+
+  const plotLeft = p1X + 42;
+  const plotRight = p1X + panelW - 16;
+  const plotTop = p1Y + 52;
+  const plotBottom = p1Y + panelH - 26;
+  const plotH = plotBottom - plotTop;
+  const plotW = plotRight - plotLeft;
+
+  // Distance Grid Lines
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([3, 3]);
+  for (let i = 0; i <= 4; i++) {
+    const yVal = plotTop + (plotH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, yVal);
+    ctx.lineTo(plotRight, yVal);
+    ctx.stroke();
+
+    const distLabel = ((4 - i) * 4.5).toFixed(1);
+    ctx.fillStyle = mutedColor;
+    ctx.font = '8.5px "JetBrains Mono", monospace';
+    ctx.fillText(distLabel, p1X + 12, yVal + 3);
+  }
+  ctx.setLineDash([]);
+
+  // Synthetic Leaves
+  const numLeaves = Math.max(16, k * 4);
+  const leafSpacing = plotW / (numLeaves - 1);
+  const leafPositions = [];
+  for (let i = 0; i < numLeaves; i++) {
+    leafPositions.push(plotLeft + i * leafSpacing);
+  }
+
+  // Draw Subtree Clusters
+  ctx.lineWidth = 1.4;
+  const clusterGroups = [];
+  const leavesPerCluster = Math.floor(numLeaves / k);
+  for (let c = 0; c < k; c++) {
+    const cColor = palette[c % palette.length];
+    ctx.strokeStyle = cColor;
+    const startIdx = c * leavesPerCluster;
+    const endIdx = (c === k - 1) ? numLeaves - 1 : (c + 1) * leavesPerCluster - 1;
+
+    for (let j = startIdx; j <= endIdx; j++) {
+      const lx = leafPositions[j];
+      const hLocal = plotBottom - 14 - (((j * 17 + seed * 3) % 25) / 25) * (plotH * 0.35);
+      ctx.beginPath();
+      ctx.moveTo(lx, plotBottom);
+      ctx.lineTo(lx, hLocal);
+      ctx.stroke();
+    }
+    const cStartX = leafPositions[startIdx];
+    const cEndX = leafPositions[endIdx];
+    const groupH = plotBottom - 22 - (((c * 31 + seed) % 30) / 30) * (plotH * 0.45);
+    ctx.beginPath();
+    ctx.moveTo(cStartX, groupH);
+    ctx.lineTo(cEndX, groupH);
+    ctx.stroke();
+
+    clusterGroups.push({ x: (cStartX + cEndX) / 2, h: groupH });
+  }
+
+  // Upper Branch Merges
+  ctx.strokeStyle = mutedColor;
+  let prevMerge = clusterGroups[0];
+  for (let c = 1; c < clusterGroups.length; c++) {
+    const cur = clusterGroups[c];
+    const mergeY = plotTop + (c / clusterGroups.length) * (plotH * 0.38);
+    ctx.beginPath();
+    ctx.moveTo(prevMerge.x, prevMerge.h);
+    ctx.lineTo(prevMerge.x, mergeY);
+    ctx.lineTo(cur.x, mergeY);
+    ctx.lineTo(cur.x, cur.h);
+    ctx.stroke();
+    prevMerge = { x: (prevMerge.x + cur.x) / 2, h: mergeY };
+  }
+
+  // Red Dashed Cut Height Line
+  const cutY = plotTop + (1 - Math.min(1, approxCut / 18)) * plotH;
+  ctx.strokeStyle = cutColor;
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.moveTo(plotLeft - 4, cutY);
+  ctx.lineTo(plotRight + 4, cutY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = cutColor;
+  ctx.font = 'bold 9px "JetBrains Mono", monospace';
+  ctx.fillText(`Cut Height = ${approxCut.toFixed(2)} (k=${k})`, plotRight - 145, cutY - 5);
+
+  // ── RIGHT PANEL: Customer Feature Space ──
+  const p2X = p1X + panelW + margin;
+  const p2Y = margin;
+  ctx.fillStyle = cardBg;
+  ctx.fillRect(p2X, p2Y, panelW, panelH);
+  ctx.strokeStyle = spineColor;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(p2X, p2Y, panelW, panelH);
+
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 12px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(`B. Customer Personas in Feature Space (k=${k})`, p2X + 16, p2Y + 22);
+
+  const spLeft = p2X + 42;
+  const spRight = p2X + panelW - 16;
+  const spTop = p2Y + 45;
+  const spBottom = p2Y + panelH - 28;
+  const spW = spRight - spLeft;
+  const spH = spBottom - spTop;
+
+  // Grid
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([3, 3]);
+  for (let i = 0; i <= 4; i++) {
+    const gy = spTop + (spH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(spLeft, gy);
+    ctx.lineTo(spRight, gy);
+    ctx.stroke();
+
+    const gx = spLeft + (spW / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(gx, spTop);
+    ctx.lineTo(gx, spBottom);
+    ctx.stroke();
+
+    ctx.fillStyle = mutedColor;
+    ctx.font = '8.5px "JetBrains Mono", monospace';
+    ctx.fillText((100 - i * 25).toString(), p2X + 12, gy + 3);
+    ctx.fillText((i * 30).toString(), gx - 6, spBottom + 14);
+  }
+  ctx.setLineDash([]);
+
+  // Axis Labels
+  ctx.fillStyle = mutedColor;
+  ctx.font = 'bold 9px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('Annual Income ($k)', spLeft + spW / 2 - 40, spBottom + 24);
+
+  // Scatter Clouds
+  personas.forEach((p, idx) => {
+    const cColor = palette[idx % palette.length];
+    const centerX = spLeft + (p.avg_income / 130) * spW;
+    const centerY = spBottom - (p.avg_spending / 100) * spH;
+
+    const count = p.size || 25;
+    for (let pt = 0; pt < count; pt++) {
+      const angle = (pt * 137.5 * Math.PI) / 180;
+      const rad = Math.sqrt(pt / count) * 24 + ((pt * 7 + seed) % 5) - 2.5;
+      const px = centerX + Math.cos(angle) * rad * (spW / 280);
+      const py = centerY + Math.sin(angle) * rad * (spH / 200);
+
+      ctx.fillStyle = cColor;
+      ctx.beginPath();
+      ctx.arc(px, py, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = isDark ? '#0F172A' : '#FFFFFF';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    }
+
+    // Centroid Cross
+    ctx.strokeStyle = isDark ? '#FFFFFF' : '#0F172A';
+    ctx.lineWidth = 2.4;
+    const cs = 5.5;
+    ctx.beginPath();
+    ctx.moveTo(centerX - cs, centerY - cs);
+    ctx.lineTo(centerX + cs, centerY + cs);
+    ctx.moveTo(centerX + cs, centerY - cs);
+    ctx.lineTo(centerX - cs, centerY + cs);
+    ctx.stroke();
+
+    ctx.strokeStyle = cColor;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(centerX - cs, centerY - cs);
+    ctx.lineTo(centerX + cs, centerY + cs);
+    ctx.moveTo(centerX + cs, centerY - cs);
+    ctx.lineTo(centerX - cs, centerY + cs);
+    ctx.stroke();
+  });
 }
 
 // ── 9. Code Walkthrough Switcher & Copy Utility ───────────────────────
