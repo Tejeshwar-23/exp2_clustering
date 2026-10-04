@@ -232,7 +232,7 @@ def run_clustering(params):
         color=cut_line_color,
         linestyle='--',
         linewidth=2.0,
-        label=f'Cut Height = {cut_height:.2f} (k={n_clusters})'
+        label=f'Cut @ {cut_height:.2f}  k={n_clusters}'
     )
     ax1.set_title(
         f'A. Hierarchical Dendrogram ({linkage_method.capitalize()} Linkage)',
