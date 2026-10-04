@@ -1,16 +1,20 @@
 """
 Unified Vercel Serverless Entrypoint for Experiment 2: Hierarchical Clustering
 Supports:
+  - Static Asset Serving: `/`, `/index.html`, `/styles.css`, `/app.js`
   - Vercel WSGI / ASGI Function entrypoint: `app` and `application`
   - Vercel BaseHTTPRequestHandler: `handler`
 Endpoints:
+  - GET  /                   -> Serves interactive web dashboard
   - GET  /api/health         -> Backend health and capability status
   - POST /api/run-clustering -> Compute Hierarchical Clustering, dendrogram, customer personas, and dual-panel visualization
 """
 
+import os
 import io
 import json
 import base64
+import mimetypes
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
@@ -22,6 +26,29 @@ import numpy as np
 from scipy.cluster.hierarchy import dendrogram, linkage
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import AgglomerativeClustering
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def get_static_file(rel_path):
+    """Safely resolve and read static files from the repository root."""
+    if not rel_path or rel_path == '/':
+        rel_path = 'index.html'
+    rel_path = rel_path.lstrip('/')
+    file_path = os.path.join(ROOT_DIR, rel_path)
+    
+    if os.path.isfile(file_path) and os.path.abspath(file_path).startswith(ROOT_DIR):
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type is None:
+            mime_type = 'text/html' if file_path.endswith('.html') else 'application/octet-stream'
+        if mime_type.startswith('text/') or mime_type in ['application/javascript', 'application/json']:
+            mime_type += '; charset=utf-8'
+        try:
+            with open(file_path, 'rb') as f:
+                return f.read(), mime_type
+        except Exception:
+            return None, None
+    return None, None
 
 
 def fig_to_base64(fig, dpi=160):
@@ -288,23 +315,22 @@ def run_clustering(params):
 
 # ── WSGI Application Entrypoint (for Vercel tool.vercel.entrypoint) ───────────
 def app(environ, start_response):
-    path = environ.get('PATH_INFO', '')
+    path = environ.get('PATH_INFO', '') or '/'
     method = environ.get('REQUEST_METHOD', 'GET').upper()
 
     cors_headers = [
-        ('Content-Type', 'application/json'),
         ('Access-Control-Allow-Origin', '*'),
         ('Access-Control-Allow-Methods', 'GET, POST, OPTIONS'),
         ('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     ]
 
     if method == 'OPTIONS':
-        start_response('200 OK', cors_headers)
+        start_response('200 OK', cors_headers + [('Content-Type', 'text/plain')])
         return [b'']
 
     # Route: Health Check
     if path in ['/api/health', '/health', '/api/health/', '/health/'] and method == 'GET':
-        start_response('200 OK', cors_headers)
+        start_response('200 OK', cors_headers + [('Content-Type', 'application/json')])
         res = {
             'status': 'online',
             'experiment': 'Hierarchical Clustering',
@@ -313,8 +339,8 @@ def app(environ, start_response):
         }
         return [json.dumps(res).encode('utf-8')]
 
-    # Route: Run Clustering
-    if path in ['/api/run-clustering', '/run-clustering', '/api/run-clustering/', '/run-clustering/'] or method == 'POST':
+    # Route: Run Clustering API
+    if path in ['/api/run-clustering', '/run-clustering', '/api/run-clustering/', '/run-clustering/'] or (method == 'POST' and 'clustering' in path):
         try:
             content_length = int(environ.get('CONTENT_LENGTH', 0) or 0)
         except (ValueError, TypeError):
@@ -328,14 +354,21 @@ def app(environ, start_response):
 
         try:
             res = run_clustering(params)
-            start_response('200 OK', cors_headers)
+            start_response('200 OK', cors_headers + [('Content-Type', 'application/json')])
             return [json.dumps(res).encode('utf-8')]
         except Exception as e:
-            start_response('500 Internal Server Error', cors_headers)
+            start_response('500 Internal Server Error', cors_headers + [('Content-Type', 'application/json')])
             return [json.dumps({'status': 'error', 'error': str(e)}).encode('utf-8')]
 
+    # Route: Static Assets (HTML, CSS, JS, etc.)
+    if method == 'GET':
+        content, mime_type = get_static_file(path)
+        if content is not None:
+            start_response('200 OK', cors_headers + [('Content-Type', mime_type)])
+            return [content]
+
     # Fallback
-    start_response('404 Not Found', cors_headers)
+    start_response('404 Not Found', cors_headers + [('Content-Type', 'application/json')])
     return [json.dumps({'status': 'error', 'message': f'Route {path} not found'}).encode('utf-8')]
 
 
@@ -347,7 +380,9 @@ application = app
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urllib.parse.urlparse(self.path)
-        if parsed_path.path in ['/api/health', '/health']:
+        path = parsed_path.path
+
+        if path in ['/api/health', '/health']:
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -358,12 +393,22 @@ class handler(BaseHTTPRequestHandler):
                 'platform': 'Vercel Serverless',
                 'frameworks': ['SciPy', 'Scikit-Learn', 'Matplotlib']
             }).encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.send_header('Content-Type', 'application/json')
+            return
+
+        content, mime_type = get_static_file(path)
+        if content is not None:
+            self.send_response(200)
+            self.send_header('Content-Type', mime_type)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({'status': 'error', 'message': 'Not Found'}).encode('utf-8'))
+            self.wfile.write(content)
+            return
+
+        self.send_response(404)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({'status': 'error', 'message': f'Route {path} not found'}).encode('utf-8'))
 
     def do_POST(self):
         content_length = int(self.headers.get('Content-Length', 0))
