@@ -1,0 +1,21 @@
+======================================================================
+EXPERIMENT 2: CUSTOMER HIERARCHICAL CLUSTERING RESULTS REPORT
+======================================================================
+
+Dataset:            Synthetic Mall Customers Benchmark
+Total Observations: 160 customer profiles
+Features:           Annual Income ($k), Spending Score (1-100)
+Preprocessing:      StandardScaler (Zero-mean, Unit-variance)
+Linkage Criterion:  Ward's Minimum Variance (Euclidean Distance)
+Target Clusters:    k = 5
+Dendrogram Cut:     Height = 11.0675
+
+Cluster    Persona Archetype          Size    Share   Avg Inc ($k)   Avg Spending
+------------------------------------------------------------------------------
+Cluster 2  Frugal Caretakers            40    25.0%          13.9          38.8
+Cluster 4  Impulsive Trendsetters       25    15.6%          14.3          81.3
+Cluster 1  Pragmatic Middle             36    22.5%          50.2          51.1
+Cluster 3  VIP High-Rollers             29    18.1%          84.5          83.6
+Cluster 5  Affluent Savers              30    18.8%          86.5          20.6
+
+======================================================================

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agglomerative Hierarchical Clustering &amp; Customer Segmentation | ML Analytics Lab</title>
+  <meta name="description" content="Enterprise-grade analytics dashboard for Agglomerative Hierarchical Clustering, Dendrogram Interpretation, and Customer Segmentation on Mall Customer Data.">
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- KaTeX for Mathematics -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Clean Enterprise CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="3"></circle>
+            <circle cx="6" cy="19" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <path d="M12 8v4M6 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </div>
+        <div class="brand-title-wrap">
+          <div class="brand-title">
+            Hierarchical Clustering Analytics
+            <span class="badge-tag">Unsupervised ML</span>
+          </div>
+          <div class="brand-subtitle">Agglomerative Tree Slicing • Dendrogram Analysis • Customer Personas</div>
+        </div>
+      </div>
+
+      <!-- 4 Core Navigation Tabs -->
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab-btn active" data-tab="laboratory" id="tab-laboratory" role="tab" aria-selected="true">
+          <span>🎛️</span> Interactive Lab
+        </button>
+        <button class="nav-tab-btn" data-tab="gallery" id="tab-gallery" role="tab" aria-selected="false">
+          <span>📊</span> Visual Results
+        </button>
+        <button class="nav-tab-btn" data-tab="code" id="tab-code" role="tab" aria-selected="false">
+          <span>💻</span> Code Walkthrough
+        </button>
+        <button class="nav-tab-btn" data-tab="viva" id="tab-viva" role="tab" aria-selected="false">
+          <span>📝</span> Viva Voce MCQs
+        </button>
+      </nav>
+
+      <!-- Action Utilities -->
+      <div class="header-actions">
+        <div class="status-indicator" id="api-status-indicator">
+          <span class="status-dot"></span>
+          <span id="api-status-label">Checking Backend...</span>
+        </div>
+        <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+          🌙
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="main-wrapper">
+
+    <!-- ─────────────────────────────────────────────────────────────
+         TAB 1: INTERACTIVE LABORATORY
+         ───────────────────────────────────────────────────────────── -->
+    <section class="tab-content-panel active" id="panel-laboratory" role="tabpanel">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">Agglomerative Hierarchical Clustering Explorer</h1>
+          <p class="panel-description">
+            Experiment with bottom-up agglomerative clustering on standardized customer metrics (Annual Income vs Spending Score).
+            Adjust the cluster cut threshold (\(k\)) and distance linkage criterion to observe real-time tree partitioning and marketing persona generation.
+          </p>
+        </div>
+        <div class="panel-actions">
+          <button class="btn-secondary" onclick="resetDefaults()">Reset Defaults</button>
+          <button class="btn-primary" id="btn-recluster" onclick="triggerClustering()">
+            <span class="btn-spinner"></span>
+            <span>⚡ Retrain &amp; Re-cluster</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="lab-grid">
+        <!-- Parameter Controls Panel -->
+        <div class="controls-panel">
+          <div class="card-title-bar">
+            <h3>Hyperparameters</h3>
+            <span class="chip-tag">SciPy &amp; Scikit-Learn</span>
+          </div>
+
+          <!-- Parameter: Target Clusters k -->
+          <div class="control-item">
+            <div class="control-item-header">
+              <span>Target Clusters (\(k\))</span>
+              <span class="val-badge" id="display-k">5</span>
+            </div>
+            <input type="range" class="slider-input" id="input-k" min="2" max="8" step="1" value="5" oninput="handleSliderChange('k', this.value)">
+            <p class="field-help">Determines horizontal threshold slicing height on the dendrogram tree.</p>
+          </div>
+
+          <!-- Parameter: Linkage Criterion -->
+          <div class="control-item">
+            <div class="control-item-header">
+              <span>Linkage Method</span>
+            </div>
+            <select class="select-dropdown" id="input-linkage" onchange="handleLinkageChange(this.value)">
+              <option value="ward" selected>Ward (Minimum Variance / Within-SS)</option>
+              <option value="complete">Complete (Maximum Pairwise Distance)</option>
+              <option value="average">Average (Mean Pairwise Distance)</option>
+              <option value="single">Single (Minimum Pairwise Distance)</option>
+            </select>
+            <p class="field-help" id="linkage-hint">Ward linkage minimizes intra-cluster variance, generating compact, balanced customer clusters.</p>
+          </div>
+
+          <!-- Parameter: Random Seed -->
+          <div class="control-item">
+            <div class="control-item-header">
+              <span>Random Seed (\(N\))</span>
+              <span class="val-badge" id="display-seed">42</span>
+            </div>
+            <input type="range" class="slider-input" id="input-seed" min="1" max="100" step="1" value="42" oninput="handleSliderChange('seed', this.value)">
+            <p class="field-help">Controls reproducible synthesis of the 5-cluster customer population.</p>
+          </div>
+
+          <!-- Dynamic Mathematical Reference Card -->
+          <div class="math-reference-card" id="math-card">
+            <div class="math-title">Active Mathematical Formulation</div>
+            <div class="math-katex-formula" id="math-formula-box">
+              $$\Delta \text{ESS}_{AB} = \frac{|A||B|}{|A|+|B|} \|\boldsymbol{\mu}_A - \boldsymbol{\mu}_B\|^2$$
+            </div>
+            <div class="math-description" id="math-desc-box">
+              <strong>Ward's Linkage:</strong> Merges pair \((A, B)\) that yields the minimum increase in Total Within-Cluster Sum of Squares (Error Sum of Squares \(\text{ESS}\)).
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Visual Display & Persona Cards Panel -->
+        <div class="display-panel">
+          <div class="card-title-bar">
+            <h3>Visual Model Output &amp; Persona Profiles</h3>
+            <span class="chip-tag" id="live-exec-tag">Port 8002 • High-Res Dual Panel</span>
+          </div>
+
+          <!-- Dual Panel Image Container -->
+          <div class="chart-viewport" id="chart-viewport">
+            <img id="live-plot-image" class="live-plot-img" src="outputs/clustering/clustering_combined.png" alt="Agglomerative Hierarchical Clustering Model Output">
+            <canvas id="client-fallback-canvas" class="client-canvas-wrap"></canvas>
+          </div>
+
+          <!-- Customer Persona Cards Grid -->
+          <div class="personas-heading-bar">
+            <h4>Customer Personas Breakdown (\(k = \)<span id="persona-k-count">5</span>)</h4>
+            <div class="threshold-badge">Dendrogram Cut Height: <strong id="val-cut-height">6.95</strong></div>
+          </div>
+
+          <div class="personas-grid" id="personas-container">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         TAB 2: VISUAL RESULTS & HIGH-RES GALLERY
+         ───────────────────────────────────────────────────────────── -->
+    <section class="tab-content-panel" id="panel-gallery" role="tabpanel">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">Visual Results &amp; High-Resolution Gallery</h1>
+          <p class="panel-description">
+            Publication-quality 300-DPI visual assets generated from the Python machine learning pipeline. Click any plot to open the full-screen zoom inspector.
+          </p>
+        </div>
+      </div>
+
+      <div class="gallery-grid">
+        <!-- Plot 1: Combined Dual-Panel -->
+        <div class="gallery-item-card">
+          <div class="gallery-preview" onclick="openLightbox('outputs/clustering/clustering_combined.png')">
+            <img src="outputs/clustering/clustering_combined.png" alt="End-to-end Combined Clustering Visualization">
+            <div class="zoom-overlay-hint">🔍 Click to Zoom</div>
+          </div>
+          <div class="gallery-meta">
+            <h2 class="gallery-title">A+B. Complete Dual-Panel Pipeline</h2>
+            <p class="gallery-desc">
+              Synchronized view illustrating the direct relationship between the hierarchical tree cut threshold (horizontal dashed line) and the 2D customer clusters in feature space.
+            </p>
+            <div class="gallery-pills">
+              <span class="spec-pill">File: clustering_combined.png</span>
+              <span class="spec-pill">DPI: 300</span>
+              <span class="spec-pill">Layout: 1x2 Subplots</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plot 2: Dendrogram Tree -->
+        <div class="gallery-item-card">
+          <div class="gallery-preview" onclick="openLightbox('outputs/clustering/dendrogram.png')">
+            <img src="outputs/clustering/dendrogram.png" alt="Hierarchical Dendrogram Tree">
+            <div class="zoom-overlay-hint">🔍 Click to Zoom</div>
+          </div>
+          <div class="gallery-meta">
+            <h2 class="gallery-title">A. Hierarchical Dendrogram Tree</h2>
+            <p class="gallery-desc">
+              Complete tree hierarchy depicting successive agglomeration steps. Vertical heights correspond to Euclidean Ward merge distances. Red dashed line cuts the tree into 5 segments.
+            </p>
+            <div class="gallery-pills">
+              <span class="spec-pill">File: dendrogram.png</span>
+              <span class="spec-pill">Metric: Euclidean</span>
+              <span class="spec-pill">Linkage: Ward</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plot 3: 2D Customer Feature Space -->
+        <div class="gallery-item-card">
+          <div class="gallery-preview" onclick="openLightbox('outputs/clustering/customer_clusters.png')">
+            <img src="outputs/clustering/customer_clusters.png" alt="Customer Clusters 2D Scatter Space">
+            <div class="zoom-overlay-hint">🔍 Click to Zoom</div>
+          </div>
+          <div class="gallery-meta">
+            <h2 class="gallery-title">B. 2D Customer Persona Clusters</h2>
+            <p class="gallery-desc">
+              Customer distribution mapped across Annual Income ($k) vs Spending Score (1–100). Includes marked cluster centroids (\(\times\)) and clear quadrant-based segmentation.
+            </p>
+            <div class="gallery-pills">
+              <span class="spec-pill">File: customer_clusters.png</span>
+              <span class="spec-pill">Centroids: Marked (X)</span>
+              <span class="spec-pill">Classes: 5 Personas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dataset & Academic Metadata Table -->
+      <div class="metadata-table-box">
+        <h3>Dataset &amp; Clustering Technical Specifications</h3>
+        <table class="academic-table">
+          <thead>
+            <tr>
+              <th>Parameter / Metric</th>
+              <th>Specification</th>
+              <th>Analytical Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dataset Domain</td>
+              <td>Mall Customer Segmentation</td>
+              <td>Simulates real-world retail purchasing behavior across income brackets and spend habits.</td>
+            </tr>
+            <tr>
+              <td>Feature Space (\(p=2\))</td>
+              <td>Annual Income (\(\$k\)), Spending Score (\(1\text{–}100\))</td>
+              <td>Orthogonal features representing economic capacity vs consumer propensity to spend.</td>
+            </tr>
+            <tr>
+              <td>Preprocessing Transformation</td>
+              <td>StandardScaler (\(\mu=0, \sigma=1\))</td>
+              <td>Prevents scale dominance in Euclidean distance matrix calculation.</td>
+            </tr>
+            <tr>
+              <td>Primary Linkage Algorithm</td>
+              <td>Ward's Minimum Variance (\(\min \Delta \text{ESS}\))</td>
+              <td>Produces compact, spherical, equal-variance customer groups ideal for marketing campaigns.</td>
+            </tr>
+            <tr>
+              <td>Tree Slicing Criterion</td>
+              <td>Largest vertical leap in Dendrogram</td>
+              <td>Identifies stable cluster separation before dissimilar macro-groups are forced together.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         TAB 3: CODE WALKTHROUGH
+         ───────────────────────────────────────────────────────────── -->
+    <section class="tab-content-panel" id="panel-code" role="tabpanel">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">Python Implementation Walkthrough</h1>
+          <p class="panel-description">
+            Step-by-step modular code reproducing the complete unsupervised machine learning pipeline with SciPy, Scikit-Learn, and Matplotlib.
+          </p>
+        </div>
+        <div class="panel-actions">
+          <button class="btn-secondary" onclick="copyActiveCodeSnippet()">📋 Copy Snippet</button>
+        </div>
+      </div>
+
+      <div class="code-layout">
+        <!-- Step Navigation Sidebar -->
+        <div class="code-nav-card">
+          <button class="code-nav-btn active" onclick="activateCodeStep(1)" id="code-btn-1">
+            <span>1.</span> Dataset Synthesis
+          </button>
+          <button class="code-nav-btn" onclick="activateCodeStep(2)" id="code-btn-2">
+            <span>2.</span> StandardScaler Normalization
+          </button>
+          <button class="code-nav-btn" onclick="activateCodeStep(3)" id="code-btn-3">
+            <span>3.</span> SciPy Linkage Matrix
+          </button>
+          <button class="code-nav-btn" onclick="activateCodeStep(4)" id="code-btn-4">
+            <span>4.</span> Dendrogram &amp; Tree Slice
+          </button>
+          <button class="code-nav-btn" onclick="activateCodeStep(5)" id="code-btn-5">
+            <span>5.</span> Label Extraction &amp; Personas
+          </button>
+        </div>
+
+        <!-- Code Content Display Card -->
+        <div class="code-display-card">
+          <div class="code-display-header">
+            <span class="code-step-title" id="code-step-title">Step 1: Customer Dataset Synthesis</span>
+            <span class="chip-tag">Python 3.10+</span>
+          </div>
+
+          <!-- Code Snippet 1 -->
+          <div class="code-snippet-pane" id="snippet-pane-1">
+            <pre class="code-pre-box"><code><span class="c1"># ── Step 1: Synthesize Mall Customer Dataset ──</span>
+<span class="k">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="c1"># 5 natural customer archetype centers: (Income in $k, Spending Score 1-100)</span>
+<span class="n">cluster_specs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s1">'center'</span><span class="p">:</span> <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">39</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>  <span class="s1">'n'</span><span class="p">:</span> <span class="mi">40</span><span class="p">,</span> <span class="s1">'persona'</span><span class="p">:</span> <span class="s1">'Frugal Caretakers'</span><span class="p">},</span>
+    <span class="p">{</span><span class="s1">'center'</span><span class="p">:</span> <span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">80</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>  <span class="s1">'n'</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span> <span class="s1">'persona'</span><span class="p">:</span> <span class="s1">'Impulsive Trendsetters'</span><span class="p">},</span>
+    <span class="p">{</span><span class="s1">'center'</span><span class="p">:</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>  <span class="s1">'n'</span><span class="p">:</span> <span class="mi">35</span><span class="p">,</span> <span class="s1">'persona'</span><span class="p">:</span> <span class="s1">'Pragmatic Middle'</span><span class="p">},</span>
+    <span class="p">{</span><span class="s1">'center'</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>  <span class="s1">'n'</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s1">'persona'</span><span class="p">:</span> <span class="s1">'Affluent Savers'</span><span class="p">},</span>
+    <span class="p">{</span><span class="s1">'center'</span><span class="p">:</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">82</span><span class="p">],</span> <span class="s1">'std'</span><span class="p">:</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>  <span class="s1">'n'</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="s1">'persona'</span><span class="p">:</span> <span class="s1">'VIP High-Rollers'</span><span class="p">},</span>
+<span class="p">]</span>
+
+<span class="n">income_list</span><span class="p">,</span> <span class="n">spending_list</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">cluster_specs</span><span class="p">:</span>
+    <span class="n">inc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">'center'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'std'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'n'</span><span class="p">]),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">130</span><span class="p">)</span>
+    <span class="n">sp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">spec</span><span class="p">[</span><span class="s1">'center'</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'std'</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">spec</span><span class="p">[</span><span class="s1">'n'</span><span class="p">]),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
+    <span class="n">income_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">inc</span><span class="p">)</span>
+    <span class="n">spending_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sp</span><span class="p">)</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">income_list</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">spending_list</span><span class="p">)])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Generated </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="si">}</span><span class="s2"> customer profiles across 5 natural segments."</span><span class="p">)</span></code></pre>
+            <div class="code-annotation-box">
+              <strong>Key Concept:</strong> Synthesizes \(N=160\) observations with defined standard deviations to emulate realistic variance across retail demographic segments.
+            </div>
+          </div>
+
+          <!-- Code Snippet 2 -->
+          <div class="code-snippet-pane" id="snippet-pane-2" style="display: none;">
+            <pre class="code-pre-box"><code><span class="c1"># ── Step 2: Feature Standardization (Zero Mean, Unit Variance) ──</span>
+<span class="k">from</span> <span class="nn">sklearn.preprocessing</span> <span class="k">import</span> <span class="n">StandardScaler</span>
+
+<span class="c1"># Crucial: Distance-based clustering requires normalized dimensional scales</span>
+<span class="n">scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+<span class="n">X_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Scaled Feature Means: </span><span class="si">{</span><span class="n">X_scaled</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Scaled Feature Stds:  </span><span class="si">{</span><span class="n">X_scaled</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></code></pre>
+            <div class="code-annotation-box">
+              <strong>Why Scale?</strong> Without normalization, raw income differences (\(\Delta = \$70\text{k}\)) would dominate spending score differences (\(\Delta = 60\)) by orders of magnitude in Euclidean distance calculations.
+            </div>
+          </div>
+
+          <!-- Code Snippet 3 -->
+          <div class="code-snippet-pane" id="snippet-pane-3" style="display: none;">
+            <pre class="code-pre-box"><code><span class="c1"># ── Step 3: Compute Linkage Matrix with SciPy ──</span>
+<span class="k">from</span> <span class="nn">scipy.cluster.hierarchy</span> <span class="k">import</span> <span class="n">linkage</span>
+
+<span class="c1"># Computes (N-1) iterative merge operations</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="n">linkage</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">'ward'</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s1">'euclidean'</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Linkage Matrix Shape: </span><span class="si">{</span><span class="n">Z</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">Z</span><span class="p">)</span><span class="si">}</span><span class="s2"> successive merges)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"First Merge [cluster1, cluster2, distance, sample_count]:</span><span class="se">\n</span><span class="si">{</span><span class="n">Z</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></code></pre>
+            <div class="code-annotation-box">
+              <strong>Matrix Structure:</strong> Matrix \(Z\) has \(N-1\) rows and 4 columns: `[cluster_a, cluster_b, merge_distance, cluster_size]`.
+            </div>
+          </div>
+
+          <!-- Code Snippet 4 -->
+          <div class="code-snippet-pane" id="snippet-pane-4" style="display: none;">
+            <pre class="code-pre-box"><code><span class="c1"># ── Step 4: Render Dendrogram Tree &amp; Cut Slice ──</span>
+<span class="k">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="k">from</span> <span class="nn">scipy.cluster.hierarchy</span> <span class="k">import</span> <span class="n">dendrogram</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+<span class="n">threshold_height</span> <span class="o">=</span> <span class="mf">0.7</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">Z</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">])</span>
+
+<span class="n">dendrogram</span><span class="p">(</span>
+    <span class="n">Z</span><span class="p">,</span>
+    <span class="n">truncate_mode</span><span class="o">=</span><span class="s1">'lastp'</span><span class="p">,</span>
+    <span class="n">p</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">color_threshold</span><span class="o">=</span><span class="n">threshold_height</span><span class="p">,</span>
+    <span class="n">above_threshold_color</span><span class="o">=</span><span class="s1">'#64748B'</span>
+<span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">threshold_height</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'#DC2626'</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">'--'</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">'k=5 Cut'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Hierarchical Dendrogram (Ward Linkage)"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">"Merged Customer Nodes"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">"Ward Distance"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></code></pre>
+            <div class="code-annotation-box">
+              <strong>Tree Interpretation:</strong> Finding the longest vertical gap without horizontal cross-intersections indicates optimal cluster separation.
+            </div>
+          </div>
+
+          <!-- Code Snippet 5 -->
+          <div class="code-snippet-pane" id="snippet-pane-5" style="display: none;">
+            <pre class="code-pre-box"><code><span class="c1"># ── Step 5: Fit Scikit-Learn Agglomerative Model &amp; Extract Personas ──</span>
+<span class="k">from</span> <span class="nn">sklearn.cluster</span> <span class="k">import</span> <span class="n">AgglomerativeClustering</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">AgglomerativeClustering</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">linkage</span><span class="o">=</span><span class="s1">'ward'</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">labels</span> <span class="o">==</span> <span class="n">c</span><span class="p">)</span>
+    <span class="n">avg_inc</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">avg_sp</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Cluster </span><span class="si">{</span><span class="n">c</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> customers | Income: $</span><span class="si">{</span><span class="n">avg_inc</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">k | Spending: </span><span class="si">{</span><span class="n">avg_sp</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">/100"</span><span class="p">)</span></code></pre>
+            <div class="code-annotation-box">
+              <strong>Business Output:</strong> Clusters partition customers into actionable business segments: Frugal Caretakers, Impulsive Trendsetters, Pragmatic Middle, Affluent Savers, and VIP High-Rollers.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────────────
+         TAB 4: VIVA VOCE MCQ ASSESSMENT
+         ───────────────────────────────────────────────────────────── -->
+    <section class="tab-content-panel" id="panel-viva" role="tabpanel">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">Viva Voce MCQ Examination</h1>
+          <p class="panel-description">
+            Evaluate your conceptual mastery of agglomerative hierarchical clustering, Ward variance objective, distance metrics, dendrogram tree geometry, and linkage chaining effects.
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Score Summary Banner -->
+      <div class="viva-score-banner">
+        <div class="score-text-group">
+          <span class="score-label">Assessment Progress &amp; Score</span>
+          <div class="score-counter-display">
+            Score: <strong id="viva-score-val">0</strong> / 5
+          </div>
+        </div>
+        <button class="btn-secondary" onclick="resetQuiz()">🔄 Retake Assessment</button>
+      </div>
+
+      <!-- MCQ Question Cards Deck -->
+      <div class="mcq-deck" id="mcq-container">
+        <!-- Injected via app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Full-Screen Lightbox Image Modal -->
+  <div class="modal-backdrop" id="image-lightbox-modal" onclick="closeLightbox()">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+      <button class="modal-close-btn" onclick="closeLightbox()" title="Close Viewer">&times;</button>
+      <img id="lightbox-img" src="" alt="High Resolution Plot View">
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
