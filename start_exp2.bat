@@ -7,5 +7,5 @@ echo ========================================================
 echo.
 echo Starting Python Backend Server on Port 8002...
 start "" http://localhost:8002
-python server.py
+python local_server.py
 pause
