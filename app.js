@@ -437,63 +437,135 @@ function drawFallbackCanvas(canvas, k, linkageMethod, seed, theme, approxCut, pe
   }
   ctx.setLineDash([]);
 
-  // Synthetic Leaves
-  const numLeaves = Math.max(16, k * 4);
-  const leafSpacing = plotW / (numLeaves - 1);
-  const leafPositions = [];
-  for (let i = 0; i < numLeaves; i++) {
-    leafPositions.push(plotLeft + i * leafSpacing);
+  // ── True Agglomerative Dendrogram Geometry Engine ──
+  // 1. Synthesize 24 customer representative cluster leaves across k groups
+  const nLeaves = 24;
+  const leafClusters = [];
+  for (let i = 0; i < nLeaves; i++) {
+    const assignedCluster = Math.min(k - 1, Math.floor((i / nLeaves) * k));
+    // Base height within leaf
+    const h = 0.4 + (((i * 13 + seed * 7) % 19) / 19) * 0.7;
+    leafClusters.push({
+      id: i,
+      cluster: assignedCluster,
+      x: plotLeft + (i / (nLeaves - 1)) * plotW,
+      h: h,
+      left: null,
+      right: null
+    });
   }
 
-  // Draw Subtree Clusters
-  ctx.lineWidth = 1.4;
-  const clusterGroups = [];
-  const leavesPerCluster = Math.floor(numLeaves / k);
-  for (let c = 0; c < k; c++) {
-    const cColor = palette[c % palette.length];
-    ctx.strokeStyle = cColor;
-    const startIdx = c * leavesPerCluster;
-    const endIdx = (c === k - 1) ? numLeaves - 1 : (c + 1) * leavesPerCluster - 1;
+  // 2. Perform greedy agglomerative hierarchical merges to construct a real binary tree
+  let nodes = [...leafClusters];
+  let nextId = nLeaves;
+  const mergeHistory = [];
 
-    for (let j = startIdx; j <= endIdx; j++) {
-      const lx = leafPositions[j];
-      const hLocal = plotBottom - 14 - (((j * 17 + seed * 3) % 25) / 25) * (plotH * 0.35);
-      ctx.beginPath();
-      ctx.moveTo(lx, plotBottom);
-      ctx.lineTo(lx, hLocal);
-      ctx.stroke();
+  // Merge nodes within same cluster first, then across clusters
+  while (nodes.length > 1) {
+    let bestDist = Infinity;
+    let bestA = 0;
+    let bestB = 1;
+
+    for (let a = 0; a < nodes.length; a++) {
+      for (let b = a + 1; b < nodes.length; b++) {
+        const sameCluster = (nodes[a].cluster === nodes[b].cluster);
+        const spatialDist = Math.abs(nodes[a].x - nodes[b].x);
+        // Prioritize merging adjacent leaves within the same cluster
+        const penalty = sameCluster ? 1.0 : 18.0;
+        const dist = (spatialDist + Math.max(nodes[a].h, nodes[b].h)) * penalty;
+
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestA = a;
+          bestB = b;
+        }
+      }
     }
-    const cStartX = leafPositions[startIdx];
-    const cEndX = leafPositions[endIdx];
-    const groupH = plotBottom - 22 - (((c * 31 + seed) % 30) / 30) * (plotH * 0.45);
-    ctx.beginPath();
-    ctx.moveTo(cStartX, groupH);
-    ctx.lineTo(cEndX, groupH);
-    ctx.stroke();
 
-    clusterGroups.push({ x: (cStartX + cEndX) / 2, h: groupH });
+    const nA = nodes[bestA];
+    const nB = nodes[bestB];
+    const mergeCluster = (nA.cluster === nB.cluster) ? nA.cluster : -1;
+    // Euclidean distance increases monotonically up the tree
+    const parentH = Math.max(nA.h, nB.h) + (mergeCluster === -1 ? 1.8 + (mergeHistory.length * 0.35) : 0.6);
+
+    const parentNode = {
+      id: nextId++,
+      cluster: mergeCluster,
+      x: (nA.x + nB.x) / 2,
+      h: parentH,
+      left: nA,
+      right: nB
+    };
+
+    mergeHistory.push(parentNode);
+    nodes.splice(bestB, 1);
+    nodes.splice(bestA, 1);
+    nodes.push(parentNode);
   }
 
-  // Upper Branch Merges
-  ctx.strokeStyle = mutedColor;
-  let prevMerge = clusterGroups[0];
-  for (let c = 1; c < clusterGroups.length; c++) {
-    const cur = clusterGroups[c];
-    const mergeY = plotTop + (c / clusterGroups.length) * (plotH * 0.38);
-    ctx.beginPath();
-    ctx.moveTo(prevMerge.x, prevMerge.h);
-    ctx.lineTo(prevMerge.x, mergeY);
-    ctx.lineTo(cur.x, mergeY);
-    ctx.lineTo(cur.x, cur.h);
-    ctx.stroke();
-    prevMerge = { x: (prevMerge.x + cur.x) / 2, h: mergeY };
+  const rootNode = nodes[0];
+  const maxTreeH = Math.max(16, rootNode.h * 1.15);
+
+  // Helper to map distance height to canvas Y
+  function hToY(dist) {
+    return plotBottom - (dist / maxTreeH) * plotH;
   }
 
-  // Red Dashed Cut Height Line
-  const cutY = plotTop + (1 - Math.min(1, approxCut / 18)) * plotH;
+  // 3. Render the binary dendrogram branches recursively
+  function drawBranch(node) {
+    if (!node || (!node.left && !node.right)) return;
+
+    const childL = node.left;
+    const childR = node.right;
+
+    const yMerge = hToY(node.h);
+    const yChildL = hToY(childL.h);
+    const yChildR = hToY(childR.h);
+
+    // Branch color: cluster palette if strictly below cut and within single cluster, else muted gray
+    const isAboveCut = (node.h >= approxCut);
+    const branchColor = (isAboveCut || node.cluster === -1)
+      ? mutedColor
+      : palette[node.cluster % palette.length];
+
+    ctx.strokeStyle = branchColor;
+    ctx.lineWidth = 1.6;
+
+    // Left vertical segment from child merge point up to current merge level
+    ctx.beginPath();
+    ctx.moveTo(childL.x, yChildL);
+    ctx.lineTo(childL.x, yMerge);
+    // Horizontal crossbar connecting left child to right child
+    ctx.lineTo(childR.x, yMerge);
+    // Right vertical segment down to right child merge level
+    ctx.lineTo(childR.x, yChildR);
+    ctx.stroke();
+
+    // Recurse into children
+    drawBranch(childL);
+    drawBranch(childR);
+  }
+
+  // Draw leaves to baseline
+  leafClusters.forEach(leaf => {
+    const leafY = hToY(leaf.h);
+    const leafColor = (leaf.h >= approxCut) ? mutedColor : palette[leaf.cluster % palette.length];
+    ctx.strokeStyle = leafColor;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(leaf.x, plotBottom);
+    ctx.lineTo(leaf.x, leafY);
+    ctx.stroke();
+  });
+
+  // Draw tree branches
+  drawBranch(rootNode);
+
+  // 4. Red Dashed Cut Height Line
+  const cutY = hToY(approxCut);
   ctx.strokeStyle = cutColor;
-  ctx.lineWidth = 1.8;
-  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 2.0;
+  ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(plotLeft - 4, cutY);
   ctx.lineTo(plotRight + 4, cutY);
@@ -502,7 +574,7 @@ function drawFallbackCanvas(canvas, k, linkageMethod, seed, theme, approxCut, pe
 
   ctx.fillStyle = cutColor;
   ctx.font = 'bold 9px "JetBrains Mono", monospace';
-  ctx.fillText(`Cut Height = ${approxCut.toFixed(2)} (k=${k})`, plotRight - 145, cutY - 5);
+  ctx.fillText(`Cut @ ${approxCut.toFixed(2)}  k=${k}`, plotRight - 110, cutY - 6);
 
   // ── RIGHT PANEL: Customer Feature Space ──
   const p2X = p1X + panelW + margin;
